@@ -150,9 +150,19 @@ struct GeneralSettingsView: View {
             icon: "sparkles.rectangle.stack"
         ) {
             VStack(alignment: .leading, spacing: 10) {
-                DetailRow("Version") {
-                    Text(AppVersion.description)
-                        .foregroundStyle(.secondary)
+                DetailRow("Version", detail: "Orbit Dictation auto-checks for updates in the background. Click here to check now.") {
+                    HStack(spacing: 10) {
+                        Text(AppVersion.description)
+                            .foregroundStyle(.secondary)
+                            .font(.callout.monospacedDigit())
+
+                        Button("Check for Updates…") {
+                            appState.sparkleUpdater.checkForUpdates()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(!appState.sparkleUpdater.canCheckForUpdates)
+                    }
                 }
 
                 if !appState.showSetupGuide {
