@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SetupSettingsView: View {
@@ -10,6 +11,7 @@ struct SetupSettingsView: View {
                 heroCard
                 checklistCard
                 quickStartCard
+                troubleshootingCard
             }
             .padding(24)
         }
@@ -124,6 +126,115 @@ struct SetupSettingsView: View {
                         appState.hideSetupGuide()
                     }
                     .buttonStyle(.bordered)
+                }
+            }
+        }
+    }
+
+    private var troubleshootingCard: some View {
+        PreferenceCard(
+            "Troubleshooting",
+            detail: "Permissions can drift across updates while the app is unsigned. If something stops working, the fix is usually to reset the relevant entry in System Settings.",
+            icon: "wrench.and.screwdriver"
+        ) {
+            VStack(alignment: .leading, spacing: 14) {
+                DisclosureGroup("Accessibility doesn't take effect after granting") {
+                    TroubleshootingSteps(steps: [
+                        "Open System Settings → Privacy & Security → Accessibility.",
+                        "Find Orbit Dictation in the list and click the − button to remove it.",
+                        "Quit Orbit Dictation completely (right-click the menu-bar icon → Quit, or ⌘Q from the popover).",
+                        "Relaunch Orbit Dictation.",
+                        "Click Grant Access in the in-app prompt — the new entry will be picked up immediately.",
+                    ])
+                    .padding(.top, 8)
+                }
+
+                DisclosureGroup("Keychain asks for your login password on launch") {
+                    TroubleshootingSteps(steps: [
+                        "When the prompt appears, click Always Allow.",
+                        "The grant persists until the next Sparkle update — the prompt will return then because the binary changed.",
+                        "Once the app is signed (Apple Developer Programme), this stops happening permanently.",
+                    ])
+                    .padding(.top, 8)
+                }
+
+                DisclosureGroup("Gatekeeper blocks the app after an update") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Orbit Dictation shows a one-click \"Copy & Open Terminal\" helper after each update. If you missed it, run this in Terminal once:")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(#"xattr -dr com.apple.quarantine "/Applications/Orbit Dictation.app""#)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                        Button("Copy command") {
+                            let command = #"xattr -dr com.apple.quarantine "/Applications/Orbit Dictation.app""#
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(command, forType: .string)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.top, 8)
+                }
+
+                DisclosureGroup("Microphone permission already granted but the app says \"Missing\"") {
+                    TroubleshootingSteps(steps: [
+                        "Open System Settings → Privacy & Security → Microphone.",
+                        "Toggle Orbit Dictation off, then back on.",
+                        "If that doesn't help, remove the entry with the − button and relaunch the app to re-prompt.",
+                    ])
+                    .padding(.top, 8)
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Why this happens")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text("Orbit Dictation currently ships unsigned (no Apple Developer Programme certificate yet). macOS keys permission grants — Accessibility, Microphone, Keychain access, and Gatekeeper approval — to the running binary's identity. Signed apps use the signing identity, which is stable across versions. Unsigned apps fall back to the binary hash, which changes on every Sparkle update. That's why grants need refreshing after updates. Signing the app fixes all four issues above permanently.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 12) {
+                    Link(destination: URL(string: "https://github.com/justinwilliames-sketch/orbit-dictation/issues")!) {
+                        Label("Report an issue", systemImage: "exclamationmark.bubble")
+                            .font(.caption)
+                    }
+                    Link(destination: URL(string: "https://github.com/justinwilliames-sketch/orbit-dictation")!) {
+                        Label("View source", systemImage: "chevron.left.forwardslash.chevron.right")
+                            .font(.caption)
+                    }
+                    Spacer()
+                }
+            }
+        }
+    }
+}
+
+private struct TroubleshootingSteps: View {
+    let steps: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(steps.enumerated()), id: \.offset) { idx, step in
+                HStack(alignment: .top, spacing: 10) {
+                    Text("\(idx + 1).")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20, alignment: .trailing)
+                    Text(step)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
