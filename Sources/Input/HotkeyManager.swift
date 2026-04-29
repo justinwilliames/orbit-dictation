@@ -72,14 +72,29 @@ final class HotkeyManager {
         installGlobalEscMonitor()
     }
 
+    /// Re-check Accessibility trust + reinstall the CGEvent tap if it just
+    /// went from denied to granted. Cheap to call — `AXIsProcessTrusted()` is
+    /// a synchronous syscall — and idempotent, so AppState wires it into the
+    /// `didBecomeActive` permission-snapshot path so a user who grants the
+    /// permission in System Settings and switches back gets immediate
+    /// pickup, rather than waiting for the polling fallback.
+    func refreshAccessibilityStatus() {
+        checkAccessibilityAndInstall()
+    }
+
     /// Poll for Accessibility permission changes only until it's granted and
-    /// the CGEvent tap is installed. Once monitoring is up, the timer stops —
-    /// nothing else flips the grant state at runtime in a way that matters here.
+    /// the CGEvent tap is installed. Tight interval (1s) so the user gets
+    /// near-instant pickup if they grant from System Settings without ever
+    /// re-activating the app — the foreground-activation path covers the
+    /// common case immediately, this catches the user who toggles the grant
+    /// while never giving the menu-bar app focus. Once monitoring is up, the
+    /// timer stops; nothing else flips the grant state at runtime in a way
+    /// that matters here.
     private func scheduleAccessibilityPollIfNeeded() {
         guard accessibilityTimer == nil else { return }
         guard eventTap == nil else { return }
 
-        accessibilityTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.checkAccessibilityAndInstall()
@@ -89,6 +104,12 @@ final class HotkeyManager {
                 }
             }
         }
+        // Add to common modes so the timer fires even while a menu or modal
+        // is being tracked. `Timer.scheduledTimer` defaults to `.default`
+        // mode, which suspends during menu tracking — exactly when a
+        // menu-bar app's user is most likely to be granting permissions.
+        RunLoop.main.add(timer, forMode: .common)
+        accessibilityTimer = timer
     }
 
     func stop() {

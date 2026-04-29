@@ -376,6 +376,13 @@ final class AppState: ObservableObject {
     }
 
     func refreshPermissionSnapshot() {
+        // Re-check Accessibility BEFORE the microphone update fires
+        // objectWillChange — this way SwiftUI views observing AppState
+        // re-render once and pick up both fresh values together.
+        // Without this, granting Accessibility in System Settings and
+        // switching back to the app would leave the UI showing
+        // "Missing" for up to the polling interval.
+        hotkeyManager.refreshAccessibilityStatus()
         microphoneAccessGranted = AudioRecorder.hasMicrophoneAccess
     }
 
