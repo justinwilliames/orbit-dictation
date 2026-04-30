@@ -149,8 +149,8 @@ struct GeneralSettingsView: View {
             detail: "Orbit Dictation keeps the brand and workflow lightweight: speak, clean up, paste, move on.",
             icon: "sparkles.rectangle.stack"
         ) {
-            VStack(alignment: .leading, spacing: 10) {
-                DetailRow("Version", detail: "Orbit Dictation auto-checks for updates in the background. Click here to check now.") {
+            VStack(alignment: .leading, spacing: 12) {
+                DetailRow("Version", detail: "Click Check for Updates to grab the latest release immediately.") {
                     HStack(spacing: 10) {
                         Text(AppVersion.description)
                             .foregroundStyle(.secondary)
@@ -163,6 +163,18 @@ struct GeneralSettingsView: View {
                         .controlSize(.small)
                         .disabled(!appState.sparkleUpdater.canCheckForUpdates)
                     }
+                }
+
+                DetailRow(
+                    "Automatic updates",
+                    detail: "Orbit Dictation polls for new releases in the background. Turn this off while you're testing — installs-on-quit can change the binary hash, which on unsigned builds invalidates Accessibility, Microphone, and Keychain grants you've already given."
+                ) {
+                    Toggle("", isOn: Binding(
+                        get: { appState.sparkleUpdater.automaticallyChecksForUpdates },
+                        set: { appState.sparkleUpdater.setAutomaticallyChecksForUpdates($0) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
                 }
 
                 if !appState.showSetupGuide {
