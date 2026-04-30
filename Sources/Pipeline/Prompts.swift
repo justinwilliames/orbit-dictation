@@ -178,24 +178,47 @@ enum Prompts {
         - Do not pad output with rephrasings of earlier content.
         - Do not generate text the speaker did not say.
 
-        LIST FORMATTING (BIAS TOWARD LISTS WHEN INTENT IS CLEAR)
+        LIST FORMATTING (BIAS TOWARD LISTS — DEFAULT TO BULLETING WHEN INPUT READS AS A LIST)
 
-        Format as a bulleted list (using "•" as the marker, one item per line) when ANY of these is true:
+        When the input reads as a list, format it as a bulleted list. Default to bulleting; only stay as prose when the input genuinely is prose. The intent is plain when ANY of these is true:
 
         a. The speaker explicitly asks for a list — phrases like "make a list", "list of the following", "put together a list", "put these in a list", "in dot points", "as bullets", "as a list".
-        b. The speaker says "list", "items", "checklist", "shopping list", "groceries", "to-do" and then enumerates items.
-        c. There are 3 or more discrete items in a clearly-list-like structure across the dictation, even spread across multiple sentences ("we need milk, bread, and eggs", "John, Sarah, and Mike", "we need to pick up some oranges, some apples, some bananas. Also some milk").
+
+        b. The speaker uses a list-cue noun before enumerating: "list", "items", "checklist", "shopping list", "grocery list", "groceries", "to-do", "agenda", "priorities", "options", "things". The cue can be a complete short sentence on its own, e.g. "Grocery list."
+
+        c. There are 3 or more comma-separated items that are all the same kind of thing (foods, names, tasks, products, places, brands). This pattern is the strongest signal regardless of any preamble:
+           "Apples, bananas, oranges, sugar, toothpaste"
+           "John, Sarah, Mike, Priya"
+           "design, build, ship, measure"
+           Comma-separated enumerations of 3+ peer items always become a list.
+
         d. The speaker uses sequencing cues across items ("first… second… third", "next… also… finally", "and also… and also").
 
         When formatting as a list:
         - One item per line with "• " prefix.
         - Capitalise the first letter of each item.
-        - If the speaker provided context, add a brief intro line ending with a colon (e.g. "Groceries:", "Priorities:", "Action items:").
+        - If the speaker provided a header noun (e.g. "Grocery list", "Priorities", "Action items"), use it as a one-line intro ending with a colon, then a blank line, then the bullets.
         - For sequential lists where order matters (the speaker uses "first / then / next" deliberately), use numbered ("1.", "2.", "3.") instead of "•".
 
-        Two-item ad-hoc lists stay as prose unless the speaker explicitly asked for a list. Mentioning the noun "bullet" inside a sentence does not by itself request list formatting.
+        STAYS AS PROSE
+        - Two-item ad-hoc lists, unless the speaker explicitly asked for a list. "I need to grab milk and bread" stays as prose.
+        - Comma-separated phrases that aren't peer items: "I went to the shop, picked up bread, and walked home" — these are clauses describing one continuous action, not a list of things.
+        - Mentioning the noun "bullet" or "list" inside an unrelated sentence — e.g. "add a bullet about rollback plan" — does not by itself request list formatting.
 
-        Examples:
+        EXAMPLES
+
+        Input: "Grocery list. Apples, bananas, oranges, sugar, toothpaste, toilet rolls, nappies, apple pie."
+        Output:
+        Grocery list:
+
+        • Apples
+        • Bananas
+        • Oranges
+        • Sugar
+        • Toothpaste
+        • Toilet rolls
+        • Nappies
+        • Apple pie
 
         Input: "put together a list of the following almond milk milk oranges and bananas"
         Output:
@@ -223,6 +246,15 @@ enum Prompts {
         • Retention
         • Activation
 
+        Input: "invite Sarah, Mike, Priya, and James to the review"
+        Output:
+        Invite the following to the review:
+
+        • Sarah
+        • Mike
+        • Priya
+        • James
+
         Input: "first we need to fix the build then ship the patch then update the docs"
         Output:
         1. Fix the build
@@ -231,6 +263,9 @@ enum Prompts {
 
         Input: "I need to grab milk and bread"
         Output: I need to grab milk and bread.
+
+        Input: "I went to the shop, picked up bread, and walked home"
+        Output: I went to the shop, picked up bread, and walked home.
 
         NO MARKDOWN UNLESS EXPLICIT
 
