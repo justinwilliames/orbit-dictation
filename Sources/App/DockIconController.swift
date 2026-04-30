@@ -41,31 +41,23 @@ final class DockIconController {
     }
 
     private func updateActivationPolicy() {
-        var anyVisible = false
+        // Comet stays menu-bar-only: no Dock icon ever, even while Settings /
+        // About / Onboarding windows are visible. LSUIElement=true in
+        // Info.plist keeps us off the Dock at launch; this guard pulls us
+        // back to .accessory if anything else flips us to .regular.
+        if NSApp.activationPolicy() != .accessory {
+            NSApp.setActivationPolicy(.accessory)
+        }
+
+        // Drop stale weak-window entries so the tracked map doesn't leak.
         var staleKeys: [ObjectIdentifier] = []
-        for (key, entry) in tracked {
-            guard let window = entry.window else {
-                staleKeys.append(key)
-                continue
-            }
-            if window.isVisible {
-                anyVisible = true
-            }
+        for (key, entry) in tracked where entry.window == nil {
+            staleKeys.append(key)
         }
         for key in staleKeys {
             if let entry = tracked.removeValue(forKey: key) {
                 NotificationCenter.default.removeObserver(entry.observer)
             }
-        }
-
-        let current = NSApp.activationPolicy()
-        if anyVisible {
-            if current != .regular {
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        } else if current != .accessory {
-            NSApp.setActivationPolicy(.accessory)
         }
     }
 }
