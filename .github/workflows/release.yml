@@ -120,10 +120,17 @@ jobs:
 
           # `--deep` re-signs nested frameworks (Sparkle.framework) so the
           # bundle is internally consistent. `--force` overrides the existing
-          # linker-signed signature. `--options runtime` enables the hardened
-          # runtime flag, which is required for any future notarisation step
-          # to accept the bundle without complaint.
-          codesign --force --deep --options runtime --sign - "$APP_PATH"
+          # linker-signed signature.
+          #
+          # Intentionally NOT passing `--options runtime`. Hardened runtime
+          # without the matching entitlements (com.apple.security.cs.*)
+          # prevents Sparkle.framework from loading at app launch — the
+          # binary signs cleanly but the .app silently fails to start. We
+          # can revisit hardened runtime after the real Developer ID cert
+          # lands and we set up the full notarisation flow with
+          # entitlements; for ad-hoc distribution it adds risk without
+          # benefit because TCC doesn't require it.
+          codesign --force --deep --sign - "$APP_PATH"
 
           echo "After re-signing:"
           codesign -dv --verbose=4 "$APP_PATH" 2>&1 | grep -E "Signature|flags|CDHash" || true
