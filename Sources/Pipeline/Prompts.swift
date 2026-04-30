@@ -66,11 +66,13 @@ enum Prompts {
         - Input contains a list-cue noun: "list", "items", "groceries", "shopping list", "to-do", "agenda", "priorities", "options", "checklist".
         - 3+ comma-separated peer items of the same kind (foods, names, tasks, places, brands).
         - Sequencing cues: "first… second… third", "next… also… finally".
+        - VERBAL ENUMERATION (CRITICAL): the speaker announces they're about to list things — "a few things to know", "couple of things", "there are X things", "a few points" — and then connects items with conversational glue ("also", "another thing", "then", "and then", "the last thing is", "lastly", "finally"). Each item can be a full sentence; items don't need to be short. Treat 2+ items connected this way as a list when introduced by an enumeration preamble.
 
         For bulleted lists:
         - One item per line, "• " prefix, capitalise first letter of each item.
-        - If speaker provided a header, use it as a one-line intro ending with ":", then a blank line, then the bullets.
+        - If speaker provided a header (whether a noun like "Grocery list" or a preamble like "A few things to know"), use it as a one-line intro ending with ":", then a blank line, then the bullets.
         - Sequential lists where order matters → use numbered ("1.", "2.", "3.") instead of bullets.
+        - For verbal-enumeration lists, strip the connector words ("also", "and then", "the last thing is") from each item — they were structural glue, not part of the item itself.
 
         Stays as prose: 2-item ad-hoc lists ("milk and bread"), clausal comma sequences ("I went to the shop, picked up bread, and walked home"), and mentions of the noun "list" or "bullet" inside an unrelated sentence.
 
@@ -105,6 +107,18 @@ enum Prompts {
         • Retention
         • Activation
         </output>
+
+        Input: "Hey there just testing out the new format for this app. A few things to know are that it is enhanced to be able to provide rich formatting. It's also built in a way that it keeps the bones of the existing one but I've just added a UI layer to it. And then the last thing is that it's got some fallback logic built in."
+        <output>
+        Hey there, just testing out the new format for this app.
+
+        A few things to know:
+
+        • It is enhanced to be able to provide rich formatting.
+        • It's built in a way that keeps the bones of the existing one, but I've just added a UI layer to it.
+        • It's got some fallback logic built in.
+        </output>
+        (Verbal enumeration: "A few things to know" preamble + "Also" + "the last thing is" → bullet. Strip the connector words from each item.)
 
         Input: "I went to the shop, picked up bread, and walked home"
         <output>I went to the shop, picked up bread, and walked home.</output>
