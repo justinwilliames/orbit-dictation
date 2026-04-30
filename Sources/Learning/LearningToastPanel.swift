@@ -116,7 +116,7 @@ private struct LearningToastView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.orbit)
                 Text("Learn from your edits?")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
@@ -185,7 +185,7 @@ private struct SuggestionRow: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.mini)
-            .tint(.orange)
+            .tint(.orbit)
 
             Button("Skip") {
                 center.dismiss(suggestion)

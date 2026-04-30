@@ -50,8 +50,22 @@ struct MenuBarView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 10) {
+            // Small Orbit-indigo squircle hosting the white Orbit glyph —
+            // mirrors how the dock icon reads, gives the popover a clear
+            // brand anchor before the title.
+            ZStack {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(Color.orbit)
+                Image("OrbitLogo")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .padding(6)
+            }
+            .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Orbit Dictation")
                     .font(.title3.weight(.semibold))
 
@@ -114,7 +128,7 @@ struct MenuBarView: View {
             }
 
             ProgressView(value: appState.setupProgress)
-                .tint(.orange)
+                .tint(.orbit)
         }
         .padding(14)
         .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))

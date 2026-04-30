@@ -155,8 +155,8 @@ struct OnboardingWindow: View {
                     Image(systemName: currentStep.icon)
                         .font(.headline)
                         .frame(width: 34, height: 34)
-                        .background(step == currentStep ? Color.orange.opacity(0.16) : Color.primary.opacity(0.05), in: Circle())
-                        .foregroundStyle(step.rawValue >= currentStep.rawValue ? Color.orange : Color.secondary)
+                        .background(step == currentStep ? Color.orbit.opacity(0.16) : Color.primary.opacity(0.05), in: Circle())
+                        .foregroundStyle(step.rawValue >= currentStep.rawValue ? Color.orbit : Color.secondary)
 
                     Text(currentStep.title)
                         .font(.caption.weight(step == currentStep ? .semibold : .regular))
@@ -304,7 +304,7 @@ struct OnboardingWindow: View {
         ) {
             VStack(alignment: .leading, spacing: 12) {
                 ProgressView(value: appState.setupProgress)
-                    .tint(.orange)
+                    .tint(.orbit)
 
                 HStack(spacing: 10) {
                     PreferenceBadge(

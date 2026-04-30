@@ -42,7 +42,7 @@ struct SetupSettingsView: View {
                 }
 
                 ProgressView(value: appState.setupProgress)
-                    .tint(.orange)
+                    .tint(.orbit)
 
                 HStack(spacing: 10) {
                     ShortcutSummaryBadge(title: "Hold: \(appState.holdShortcut.menuTitle)")

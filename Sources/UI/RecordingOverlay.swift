@@ -82,17 +82,36 @@ struct RecordingOverlay: View {
     private var recordingRow: some View {
         let silence = pipeline.isHearingSilence
         let isHold = pipeline.activeTriggerMode == .hold
-        return HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill((silence ? Color.orange : Color.red).opacity(0.22))
-                    .frame(width: 24, height: 24)
-                    .scaleEffect(pipeline.audioLevel > 0.04 ? 1.16 : 0.94)
-                    .animation(.easeInOut(duration: 0.14), value: pipeline.audioLevel)
+        return HStack(spacing: 12) {
+            // Orbit logo as the prominent leading element. Pulse-scales with
+            // the live audio level so the Orbit identity reads as "actively
+            // listening". Silence dims the logo to 0.45 opacity and overlays
+            // a small amber dot at the bottom-right so the user can tell at
+            // a glance whether we're picking up audio.
+            ZStack(alignment: .bottomTrailing) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(silence ? 0.04 : 0.10))
+                        .frame(width: 34, height: 34)
+                        .scaleEffect(pipeline.audioLevel > 0.04 ? 1.10 : 0.95)
+                        .animation(.easeInOut(duration: 0.14), value: pipeline.audioLevel)
 
-                Circle()
-                    .fill(silence ? Color.orange : Color.red)
-                    .frame(width: 9, height: 9)
+                    Image("OrbitLogo")
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .opacity(silence ? 0.45 : 1.0)
+                        .animation(.easeInOut(duration: 0.2), value: silence)
+                }
+
+                if silence {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 8, height: 8)
+                        .overlay(Circle().strokeBorder(Color.black.opacity(0.4), lineWidth: 1))
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
 
             Text(silence
@@ -189,7 +208,7 @@ private struct CompactWaveformView: View {
     // built a new LinearGradient per bar per frame (~1.3k gradients/sec
     // during recording). Canvas draws ~30× faster and keeps CPU cool.
     private static let fillShading = GraphicsContext.Shading.linearGradient(
-        Gradient(colors: [.white.opacity(0.92), .orange.opacity(0.85)]),
+        Gradient(colors: [.white.opacity(0.92), Color.orbitLight.opacity(0.85)]),
         startPoint: CGPoint(x: 0, y: 0),
         endPoint: CGPoint(x: 0, y: 26)
     )

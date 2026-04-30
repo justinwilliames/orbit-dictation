@@ -23,7 +23,7 @@ struct PreferenceCard<Content: View>: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(.orbit)
                     .frame(width: 28)
 
                 VStack(alignment: .leading, spacing: 4) {

@@ -47,7 +47,7 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(selectedTab == tab ? Color.orange.opacity(0.15) : Color.clear)
+                                .fill(selectedTab == tab ? Color.orbit.opacity(0.15) : Color.clear)
                         )
                         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
