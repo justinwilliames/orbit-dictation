@@ -57,6 +57,7 @@ enum Prompts {
         - 3+ comma-separated peer items of the same kind (foods, names, tasks, places, brands).
         - Sequencing cues: "first… second… third", "next… also… finally".
         - Verbal enumeration: speaker announces a list ("a few things to know", "couple of things", "there are X things") AND connects items with "also", "and another thing", "the last thing is", "lastly", "finally". Items can be full sentences. Strip the connector words from each item.
+        - Implicit enumeration: 3+ short standalone sentences that each introduce a DIFFERENT subject within a shared thematic frame (things to fix / buy / observe, complaints, action items, notes). Test: can the sentences be reordered without losing meaning? If yes → bullet. If they share a subject or have narrative flow ("then", "after", "because", "so"), stay prose.
 
         For lists: one item per line, "• " prefix, capitalise the first letter of each item. If the speaker provided a header (e.g. "Grocery list", "A few things to know"), use it as a one-line intro ending with ":", then a blank line, then the bullets. Sequential lists where order matters → numbered ("1.", "2.", "3.").
 
@@ -93,8 +94,23 @@ enum Prompts {
         • It's built in a way that keeps the bones of the existing one, but I've just added a UI layer to it.
         • It's got some fallback logic built in.
 
+        Input: "The fan in the office is really shit. The lighting in the kitchen needs replacing. We have to get the paint done in the rest of the house."
+        Output:
+        Things to fix:
+
+        • The fan in the office is really shit.
+        • The lighting in the kitchen needs replacing.
+        • We have to get the paint done in the rest of the house.
+
+        (Implicit enumeration: three short standalone sentences, each introducing a different subject — fan, lighting, paint — within a shared frame of "things to fix". Reorderable without loss. Synthesise a brief header from the shared frame.)
+
         Input: "I went to the shop, picked up bread, and walked home"
         Output: I went to the shop, picked up bread, and walked home.
+
+        Input: "I went to the shop. I picked up bread. I walked home."
+        Output: I went to the shop, picked up bread, and walked home.
+
+        (Three sentences but same subject "I" with narrative flow — stays as prose. Implicit enumeration requires DIFFERENT subjects.)
 
         Input: "what's the best way to structure this API request"
         Output: What's the best way to structure this API request?
