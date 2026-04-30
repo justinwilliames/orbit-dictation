@@ -46,6 +46,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("Comet terminating")
     }
 
+    /// Comet is a menu-bar app — the mic glyph in the status bar is the
+    /// always-on surface. Without this override, AppKit treats closing
+    /// Settings (or About, or the menu-bar popover) as "last window
+    /// closed" and quits the process, taking the status-bar icon with
+    /// it. Returning `false` keeps the process alive so the menu-bar
+    /// icon stays put. Quit goes through the explicit Quit menu item.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     /// When the user clicks the .app (Finder, Dock, Spotlight, ⌘-tab) while
     /// the app is already running, open Settings. Without this, an LSUIElement
     /// app appears to do nothing on second-launch — there's no Dock icon to
