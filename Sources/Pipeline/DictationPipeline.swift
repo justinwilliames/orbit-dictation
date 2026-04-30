@@ -367,15 +367,17 @@ final class DictationPipeline: ObservableObject {
                 // Dynamic max_tokens cap based on input length. Proper cleanup
                 // produces output close to the input length — at most a modest
                 // expansion when numerals replace words and punctuation gets
-                // added. Capping max_tokens at ~50% character expansion + 50
-                // token safety buffer prevents runaway expansion loops where
-                // the model paraphrases into long second-person prose or
-                // repeats the same sentence.
+                // added. Capping max_tokens prevents runaway expansion loops
+                // where the model paraphrases into long second-person prose
+                // or repeats the same sentence.
                 //
-                // ~4 chars/token average × 0.5 = chars/2 tokens cap. Floor at
-                // 150 so very short utterances aren't truncated mid-sentence.
+                // ~4 chars/token average × 0.5 = chars/2 tokens for the
+                // cleaned output, plus a 200-token buffer for the
+                // <analysis> reasoning block (reflect-then-act pattern that
+                // improves list detection + person matching). Floor at 250
+                // so very short utterances aren't truncated mid-sentence.
                 let inputChars = normalizedRawTranscript.count
-                let dynamicMaxTokens = max(150, inputChars / 2 + 50)
+                let dynamicMaxTokens = max(250, inputChars / 2 + 200)
 
                 do {
                     let response = try await llmProvider.complete(
@@ -386,7 +388,15 @@ final class DictationPipeline: ObservableObject {
                         )
                     )
 
-                    if let normalizedCleanedTranscript = normalizedTranscriptText(from: response.text) {
+                    // Extract the cleaned text from the structured response.
+                    // The system prompt instructs the model to emit
+                    // <analysis>…</analysis><output>…</output>; the analysis
+                    // block is reasoning we strip before paste so only the
+                    // <output> content reaches the user. If the model didn't
+                    // use the tags (older provider, prompt drift), fall back
+                    // to the whole response text.
+                    let extractedText = Self.extractCleanedOutput(from: response.text)
+                    if let normalizedCleanedTranscript = normalizedTranscriptText(from: extractedText) {
                         // Output-length sanity check. If the LLM has run away
                         // (paraphrased into a long explanation, looped on a
                         // single sentence, switched grammatical person, etc.),
@@ -475,6 +485,40 @@ final class DictationPipeline: ObservableObject {
         Preserve these proper nouns / terms exactly as spelled when they appear \
         (do not paraphrase, translate, or correct them): \(joined).
         """
+    }
+
+    /// Extract the cleaned text from an LLM response that follows the
+    /// reflect-then-act format (`<analysis>…</analysis><output>…</output>`).
+    ///
+    /// The system prompt instructs the model to write a brief reasoning
+    /// block before producing the cleaned text. The reasoning is for the
+    /// model's own benefit (better adherence to list / person / length
+    /// rules) and is stripped before paste so only the `<output>` content
+    /// reaches the user.
+    ///
+    /// Robustness: if the response doesn't contain `<output>` tags (older
+    /// provider, prompt drift, model that doesn't follow the format), the
+    /// whole response is returned unchanged so the pipeline degrades to
+    /// pre-reflect behaviour rather than failing. If `<output>` opens but
+    /// never closes (truncation under the max_tokens cap), use everything
+    /// after `<output>` to the end.
+    static func extractCleanedOutput(from response: String) -> String {
+        guard let openRange = response.range(of: "<output>") else {
+            // No tag at all — assume the model produced raw cleaned text.
+            return response.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let afterOpen = response[openRange.upperBound...]
+
+        if let closeRange = afterOpen.range(of: "</output>") {
+            return String(afterOpen[..<closeRange.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        // <output> opened but closing tag truncated by the token cap. Use
+        // everything after the open tag rather than dropping the whole
+        // response.
+        return String(afterOpen).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func normalizedTranscriptText(from text: String) -> String? {
