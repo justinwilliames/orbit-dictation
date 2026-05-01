@@ -9,10 +9,55 @@ struct PromptsSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 promptCard
+                toneCard
                 vocabularyCard
                 referenceCard
             }
             .padding(24)
+        }
+    }
+
+    private var toneCard: some View {
+        PreferenceCard(
+            "Tone of Voice",
+            detail: "Optional. Describe how your dictated text should sound when it comes back — the cleanup pipeline applies these style instructions on top of the cleanup prompt without changing what you said.",
+            icon: "waveform"
+        ) {
+            VStack(alignment: .leading, spacing: 12) {
+                TextEditor(text: $appState.customToneInstructions)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 120)
+                    .padding(10)
+                    .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "lightbulb")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                    Text("Example: \"Casual, dry, never use exclamation marks. Australian spellings (organise, colour). Prefer 'so I' over 'therefore I'.\"")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack {
+                    PreferenceBadge(
+                        title: appState.customToneInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "No tone instructions"
+                            : "Tone applied",
+                        tone: appState.customToneInstructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .neutral : .good
+                    )
+
+                    Spacer()
+
+                    if !appState.customToneInstructions.isEmpty {
+                        Button("Clear") {
+                            appState.customToneInstructions = ""
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
         }
     }
 

@@ -15,6 +15,12 @@ final class AppState: ObservableObject {
     @AppStorage("deepContextEnabled") var deepContextEnabled: Bool = false
     @AppStorage("preserveClipboard") var preserveClipboard: Bool = true
     @AppStorage("customSystemPrompt") var customSystemPrompt: String = ""
+    /// User-supplied tone-of-voice / style guidance. Appended to the
+    /// cleanup prompt (default or custom) under a TONE OF VOICE section
+    /// at runtime — the user describes how their writing should sound,
+    /// not what the cleanup pipeline should DO. Examples: "Casual,
+    /// dry, never use exclamation marks. Australian spellings."
+    @AppStorage("customToneInstructions") var customToneInstructions: String = ""
     @AppStorage("customVocabulary") var customVocabulary: String = ""
     @AppStorage("learnFromEdits") var learnFromEdits: Bool = false
     @AppStorage("soundEnabled") var soundEnabled: Bool = true
@@ -472,9 +478,25 @@ final class AppState: ObservableObject {
         pipeline.preserveClipboard = preserveClipboard
         pipeline.soundVolume = soundEnabled ? 1.0 : 0.0
 
-        // `customSystemPrompt` is the single user-editable override. When
-        // empty, the pipeline falls back to the built-in cleanup prompt.
-        pipeline.systemPrompt = customSystemPrompt.isEmpty ? Prompts.defaultCleanup : customSystemPrompt
+        // `customSystemPrompt` is the rules-level override. When empty
+        // we fall back to the built-in cleanup prompt. `customToneInstructions`
+        // is then appended as a TONE OF VOICE section so the user's
+        // style guidance composes with whichever rules-level prompt is
+        // active — they can pick "default rules + my tone" without
+        // having to copy the whole default prompt to add a paragraph.
+        let basePrompt = customSystemPrompt.isEmpty ? Prompts.defaultCleanup : customSystemPrompt
+        let trimmedTone = customToneInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedTone.isEmpty {
+            pipeline.systemPrompt = basePrompt
+        } else {
+            pipeline.systemPrompt = basePrompt + """
+
+
+            TONE OF VOICE (user-supplied — apply to the cleaned output without altering content)
+
+            \(trimmedTone)
+            """
+        }
     }
 
     var sttLanguageSelection: STTLanguageSelection {

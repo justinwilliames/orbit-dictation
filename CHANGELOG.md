@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.14] — 2026-05-01
+
+### Added
+
+* **Tone of Voice section in Prompts settings.** New text field where users describe how their dictated text should sound when it comes back — e.g. "Casual, dry, never use exclamation marks. Australian spellings." The instructions are appended as a `TONE OF VOICE` section after whichever cleanup prompt is active (default or custom override), so they compose with the rules-level prompt without forcing users to copy/edit the whole default to add a tone paragraph. Stored under `customToneInstructions` in UserDefaults; picked up at the start of every dictation via `syncPipelineConfig`.
+
 ## [0.2.13] — 2026-05-01
 
 ### Changed
