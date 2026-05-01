@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.8] — 2026-05-01
+
+### Fixed
+
+* **Cleanup prompt no longer drifts to third person on narrative-sounding dictation.** The pronoun-preservation rule previously only forbade `I → you/we`; it was silent on `I → he/she/they`, so the LLM occasionally rewrote first-person narrative ("I went down to the beach…") into third person. Rule expanded to cover all person shifts in either direction, with an explicit narrative example.
+
 ## [0.2.7] — 2026-05-01
 
 ### Fixed
