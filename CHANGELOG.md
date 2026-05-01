@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.12] — 2026-05-01
+
+### Fixed
+
+* **Settings reopen, attempt 3.** v0.2.11 still didn't fully resolve the popover-driven Settings open path. Three changes here: (1) reordered popover-open code so the Settings window is created and `makeKeyAndOrderFront`'d *before* the popover dismiss animation runs — previously `NSApp.activate(ignoringOtherApps:)` was racing against an animating popover and getting swallowed; (2) added a NotificationCenter fallback path in `MenuBarView` so that even if `NSApp.delegate as? AppDelegate` ever returns nil, the open call still routes through the AppDelegate observer; (3) added per-tap diagnostic logs at `subsystem == "team.yourorbit.OrbitDictation" AND category == "MenuBarView"` so a regression here is debuggable from Console.app without an Xcode attach.
+
 ## [0.2.11] — 2026-05-01
 
 ### Fixed

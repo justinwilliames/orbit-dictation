@@ -1,5 +1,8 @@
 import AppKit
+import os
 import SwiftUI
+
+private let logger = Logger(subsystem: "team.yourorbit.OrbitDictation", category: "MenuBarView")
 
 struct MenuBarView: View {
     @ObservedObject var appState: AppState
@@ -306,19 +309,37 @@ struct MenuBarView: View {
 
     private func openSettings(tab: SettingsTab) {
         selectedTabRaw = tab.rawValue
-        // The popover is hosted in `NSPopover` by `MenuBarController`, so
-        // `@Environment(\.openWindow)` isn't reliably wired to the App's
-        // scene tree. Route window-opens through `AppDelegate` instead,
-        // which owns the AppKit-level scene-front logic.
         let appDelegate = NSApp.delegate as? AppDelegate
+        logger.info("openSettings tap: tab=\(tab.rawValue, privacy: .public) appDelegate=\(appDelegate == nil ? "nil" : "ok", privacy: .public)")
+
+        // Open the window FIRST, before closing the popover. Reversing
+        // this order means a new key window is up before NSPopover starts
+        // its dismiss animation, which on macOS Sequoia avoided the case
+        // where `NSApp.activate(ignoringOtherApps:)` got swallowed by an
+        // animating popover and the Settings window never gained focus.
+        if let appDelegate {
+            appDelegate.showSettings(tab: tab)
+        } else {
+            // Fallback path: AppDelegate cast came back nil (shouldn't
+            // ever happen, but if Swift concurrency / module identity
+            // ever gets weird, NotificationCenter is universally
+            // reachable and AppDelegate's observer will route through
+            // `showSettings`).
+            logger.error("openSettings fallback: posting whispurOpenSettings notification")
+            NotificationCenter.default.post(name: .whispurOpenSettings, object: tab.rawValue)
+        }
+
+        // NSPopover.behavior = .transient handles the dismiss when the new
+        // Settings window steals focus, but explicitly closing keeps the
+        // dismissal snappy on slower machines.
         appDelegate?.closeMenuBarPopover()
-        appDelegate?.showSettings(tab: tab)
     }
 
     private func openAbout() {
         let appDelegate = NSApp.delegate as? AppDelegate
-        appDelegate?.closeMenuBarPopover()
+        logger.info("openAbout tap: appDelegate=\(appDelegate == nil ? "nil" : "ok", privacy: .public)")
         appDelegate?.showAbout()
+        appDelegate?.closeMenuBarPopover()
     }
 
     private var primaryActionTitle: String {
