@@ -23,12 +23,36 @@ final class WhispurTests: XCTestCase {
 
     func testShortcutBindingStorageRoundTrip() {
         let cases: [ShortcutBinding] = [
-            .fnKey, .commandFn, .rightOption, .controlSpace, .optionSpace, .commandShiftSpace, .f5,
+            .fnKey, .commandFn, .rightOption, .rightCommand, .controlSpace, .optionSpace, .commandShiftSpace, .f5,
         ]
         for binding in cases {
             let storage = binding.storageValue
             let decoded = ShortcutBinding(storageValue: storage)
             XCTAssertEqual(decoded, binding, "Round-trip failed for \(binding.menuTitle): \(storage)")
+        }
+    }
+
+    /// Regression test: Right Option (and any binding whose `keyCode` is itself
+    /// a modifier — Right Command, Fn-with-keyCode, etc.) was silently failing
+    /// because `HotkeyManager.bindingIsActive` only checked the regular pressed-
+    /// keys set, while modifier key codes flow through `flagsChanged` and live
+    /// in `pressedModifierKeyCodes`. Either binding should be present in
+    /// `holdPresets` and survive a storage round-trip with the modifier-key
+    /// keyCode intact.
+    func testModifierOnlyHoldPresetsArePresentAndRoundTrip() {
+        XCTAssertTrue(ShortcutBinding.holdPresets.contains(.rightOption), "Right Option must remain a hold preset")
+        XCTAssertTrue(ShortcutBinding.holdPresets.contains(.rightCommand), "Right Command must be a hold preset")
+
+        // The keyCode for these bindings IS a modifier keycode. Confirms
+        // we haven't accidentally lowered the keyCode to nil (which would
+        // make the binding match *any* press of the modifier — including
+        // bare left-side presses).
+        XCTAssertNotNil(ShortcutBinding.rightOption.keyCode)
+        XCTAssertNotNil(ShortcutBinding.rightCommand.keyCode)
+
+        for binding in [ShortcutBinding.rightOption, .rightCommand] {
+            let decoded = ShortcutBinding(storageValue: binding.storageValue)
+            XCTAssertEqual(decoded, binding, "Round-trip failed for \(binding.menuTitle)")
         }
     }
 

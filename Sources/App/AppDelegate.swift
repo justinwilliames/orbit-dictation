@@ -22,6 +22,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         didFinishLaunching = true
         logger.info("Comet launched from: \(Bundle.main.bundleURL.path, privacy: .public)")
 
+        // Catch all `.whispurOpenSettings` posters (OnboardingWindow,
+        // re-broadcast inside `postOpenSettings`, future call sites) and
+        // route through the single AppKit-owned opener. Previously the
+        // observer lived inside the SwiftUI `MenuBarExtra` label, but
+        // observers in that label cause the status item to be discarded
+        // on re-evaluation — which is what made the menu-bar icon vanish.
+        NotificationCenter.default.addObserver(
+            forName: .whispurOpenSettings,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            Task { @MainActor [weak self] in
+                let tab = (note.object as? String) ?? SettingsTab.setup.rawValue
+                self?.postOpenSettings(tab: tab)
+            }
+        }
+
         // App Translocation check first. macOS Gatekeeper silently copies an
         // unsigned + quarantined app to a randomised read-only path under
         // /private/var/folders/.../AppTranslocation/... on each launch. Any
@@ -69,6 +86,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    /// Handle our `comet://` URL scheme. SwiftUI's `.handlesExternalEvents`
+    /// on the Settings/About `Window` scenes is the primary handler — it
+    /// creates the SwiftUI scene if one doesn't exist yet. We only step
+    /// in here to focus an existing window if SwiftUI hasn't already done
+    /// so. **Must not call `postOpenSettings`** — that would re-issue the
+    /// URL open and loop. Activation alone is enough to surface whatever
+    /// window SwiftUI created from the same URL.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        let host = urls.first(where: { $0.scheme == "comet" })?.host
+        guard let host else { return }
+        let identifierFragment = host == "settings" ? "settings" : "about"
+        NSApp.activate(ignoringOtherApps: true)
+        if let existing = NSApp.windows.first(where: {
+            ($0.identifier?.rawValue.contains(identifierFragment) ?? false) &&
+            !String(describing: type(of: $0)).contains("MenuBarExtra") &&
+            !String(describing: type(of: $0)).contains("StatusBar")
+        }) {
+            existing.makeKeyAndOrderFront(nil)
+            existing.orderFrontRegardless()
+        }
+    }
+
     /// Open the Settings window on launch if onboarding is already done. The
     /// onboarding window covers first-install (it presents the setup checklist
     /// inline), so Settings only auto-opens for repeat launches — that's where
@@ -80,14 +119,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         postOpenSettings()
     }
 
-    private func postOpenSettings() {
-        // The menu-bar icon view observes this notification and routes the
-        // tap to `WindowUtilities.focusOrOpenWindow(id: .settings)`. Reusing
-        // it here keeps a single code path for "open the Settings window".
-        NotificationCenter.default.post(
-            name: .whispurOpenSettings,
-            object: SettingsTab.setup.rawValue
-        )
+    private func postOpenSettings(tab: String = SettingsTab.setup.rawValue) {
+        // Persist the tab selection so the SettingsView picks it up on its
+        // next render. `selectedTab` is bound to `@AppStorage("settings.selectedTab")`
+        // inside the Settings view hierarchy.
+        UserDefaults.standard.set(tab, forKey: "settings.selectedTab")
+
+        // Bring an existing Settings NSWindow to the front if SwiftUI has
+        // already instantiated it. Cheaper than the URL-scheme round-trip
+        // and avoids any chance of the URL handler queuing.
+        if let existing = NSApp.windows.first(where: {
+            ($0.identifier?.rawValue.contains("settings") ?? false) &&
+            !String(describing: type(of: $0)).contains("MenuBarExtra") &&
+            !String(describing: type(of: $0)).contains("StatusBar")
+        }) {
+            DockIconController.shared.register(existing)
+            NSApp.activate(ignoringOtherApps: true)
+            existing.makeKeyAndOrderFront(nil)
+            existing.orderFrontRegardless()
+            // No re-broadcast — that would loop with our own observer.
+            // Tab selection is already persisted to UserDefaults above;
+            // the popover's `@AppStorage("settings.selectedTab")` and the
+            // SettingsView's binding will pick it up.
+            return
+        }
+
+        // No existing window — ask SwiftUI to instantiate the Settings scene
+        // by opening its registered URL. The Settings `Window` scene is
+        // wired to `comet://settings` via `.handlesExternalEvents`, so this
+        // works from AppKit without needing the SwiftUI `openWindow`
+        // environment action (which we can't get from AppDelegate).
+        if let url = URL(string: "comet://settings") {
+            NSWorkspace.shared.open(url)
+        }
         NSApp.activate(ignoringOtherApps: true)
     }
 

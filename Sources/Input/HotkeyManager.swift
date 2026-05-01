@@ -475,6 +475,15 @@ final class HotkeyManager: ObservableObject {
         }
 
         if let keyCode = binding.keyCode {
+            // Modifier keycodes (Right Option, Right Command, etc.) flow
+            // through `flagsChanged` and live in `pressedModifierKeyCodes`,
+            // never in `pressedKeyCodes`. A binding whose own keyCode is a
+            // modifier (e.g. `kVK_RightOption = 61`) would otherwise never
+            // match. Check the modifier set first, then fall back to the
+            // regular pressed-keys set for non-modifier bindings.
+            if trackedModifierKeyCodes.contains(keyCode) {
+                return state.pressedModifierKeyCodes.contains(keyCode)
+            }
             return state.pressedKeyCodes.contains(keyCode)
         }
 

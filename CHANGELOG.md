@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.6] — 2026-05-01
+
+### Fixed
+
+* **Right Option (and any modifier-only hotkey) now actually triggers hold-to-talk.** Bindings whose key code is itself a modifier (Right Option, Right Command, etc.) were silently failing because the matcher only checked the regular pressed-keys set; modifier key codes flow through `flagsChanged` and live in a separate set. Same fix unblocks any future modifier-only binding.
+* **Menu-bar icon no longer disappears shortly after launch.** SwiftUI's `MenuBarExtra` was discarding the underlying `NSStatusItem` when the label view re-evaluated — the label held reactive dependencies (`@AppStorage`, `@Environment(\.openWindow)`, `.onReceive`, `.task`) and switched between distinct concrete view types per pipeline phase. Label is now a single concrete view driven solely by phase; side effects moved to the popover content and to `AppDelegate`.
+
+### Added
+
+* **Right Command** as a hold-to-talk preset alongside Right Option, Fn, Control + Space, and F5.
+
+### Internal
+
+* `comet://` URL scheme registered for AppKit-to-SwiftUI scene routing (replaces the notification-via-label hack the old menu-bar code relied on for opening Settings at launch).
+
 ## [0.1.0] — 2026-04-30
 
 Initial Comet release. Forked from [Whispur](https://github.com/sophiie-ai/whispur) at v0.13.4.

@@ -46,6 +46,9 @@ struct ShortcutBinding: Codable, Equatable, Hashable {
     /// Right Option key.
     static let rightOption = ShortcutBinding(keyCode: UInt16(kVK_RightOption), modifiers: .option)
 
+    /// Right Command key.
+    static let rightCommand = ShortcutBinding(keyCode: UInt16(kVK_RightCommand), modifiers: .command)
+
     /// Control + Space.
     static let controlSpace = ShortcutBinding(keyCode: UInt16(kVK_Space), modifiers: .control)
 
@@ -59,7 +62,7 @@ struct ShortcutBinding: Codable, Equatable, Hashable {
     static let f5 = ShortcutBinding(keyCode: UInt16(kVK_F5), modifiers: [])
 
     /// Built-in preset shortcuts for hold-to-talk.
-    static let holdPresets: [ShortcutBinding] = [.fnKey, .rightOption, .controlSpace, .f5]
+    static let holdPresets: [ShortcutBinding] = [.fnKey, .rightOption, .rightCommand, .controlSpace, .f5]
 
     /// Built-in preset shortcuts for toggle recording.
     static let togglePresets: [ShortcutBinding] = [.commandFn, .optionSpace, .commandShiftSpace, .f5]
@@ -85,6 +88,8 @@ struct ShortcutBinding: Codable, Equatable, Hashable {
             return "Command + Fn"
         case .rightOption:
             return "Right Option"
+        case .rightCommand:
+            return "Right Command"
         case .controlSpace:
             return "Control + Space"
         case .optionSpace:
@@ -123,6 +128,7 @@ struct ShortcutBinding: Codable, Equatable, Hashable {
         switch Int(code) {
         case kVK_F5: return "F5"
         case kVK_RightOption: return "Right \u{2325}"
+        case kVK_RightCommand: return "Right \u{2318}"
         case kVK_Space: return "Space"
         case kVK_Return: return "\u{21A9}"
         default: return "Key(\(code))"

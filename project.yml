@@ -56,6 +56,13 @@ targets:
         NSSupportsAutomaticTermination: true
         SUFeedURL: https://github.com/justinwilliames-sketch/orbit-dictation/releases/latest/download/appcast.xml
         SUPublicEDKey: 4HZt8Wm9W7FCkufc4a8CneXFmCd9v3UM3dIa6ob2xXE=
+        # URL scheme so AppDelegate can open the SwiftUI Settings scene via
+        # `NSWorkspace.shared.open(comet://settings)` without needing the
+        # SwiftUI `openWindow` environment action (which AppKit can't reach).
+        CFBundleURLTypes:
+          - CFBundleURLName: team.yourorbit.OrbitDictation.url
+            CFBundleURLSchemes:
+              - comet
 
   WhispurTests:
     type: bundle.unit-test
