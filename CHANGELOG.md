@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.15] — 2026-05-01
+
+### Fixed
+
+* **Settings reopen, the actual fix.** v0.2.14's diagnostic logs proved the real bug: `NSApp.delegate as? AppDelegate` returns nil at runtime on macOS Sequoia even though AppDelegate's methods are clearly running. SwiftUI's `@NSApplicationDelegateAdaptor` wraps the user delegate in a private class, defeating the cast. Replaced with an `AppDelegate.shared` singleton set in `init()`. Direct path now works; the NotificationCenter fallback added in v0.2.12 stays as a defensive safety net but should never fire.
+* **Reject weak-fallback-model garbage output.** Two new guardrails in `DictationPipeline` mirror the existing expansion guardrail. *Compression*: when the raw transcript is ≥10 words and the cleaned output is under half that length (e.g. 47-word input → 12-word reply), use raw instead. *Framing/refusal*: when the cleaned output starts with phrases like "I've cleaned the input. Here is…", "I don't have the ability…", "It's asking you, not me", "I cannot…", "as an AI…", etc., use raw instead. Both fire mostly when Groq's free-tier daily token cap is hit and dictation falls back to `llama-3.1-8b-instant`, which is too weak to follow the cleanup contract.
+
+### Changed
+
+* **Anthropic provider: prompt caching enabled, default model = Haiku 4.5.** The ~1,400-token cleanup prompt is now sent with `cache_control: { type: "ephemeral" }` — Anthropic caches it server-side for 5 minutes and discounts cached tokens 90%. Combined with switching the default model from Sonnet 4 to Haiku 4.5, the structural answer to Sir's Groq rate-limit problem is "use Anthropic Haiku" — no daily token caps that bite an active dictation user, faster than the Groq fallback path on average, and effectively free at this prompt size. Existing users who explicitly chose a different model keep their selection.
+
 ## [0.2.14] — 2026-05-01
 
 ### Added

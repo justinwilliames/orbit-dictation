@@ -426,33 +426,59 @@ final class DictationPipeline: ObservableObject {
                     if let normalizedCleanedTranscript = normalizedTranscriptText(from: extractedText) {
                         // Output-length sanity check. Catches runaway LLM
                         // expansion (paraphrasing into long second-person
-                        // prose, sentence loops, etc.). Two thresholds because
-                        // bulleting legitimately adds words: every `• ` marker
-                        // splits as a separate "word" under whitespace
-                        // tokenisation, and a `Header:` line + blank line add
-                        // structure characters. Prose expansion is the
-                        // failure mode worth catching; list reformatting is
-                        // not.
+                        // prose, sentence loops, etc.) AND the inverse —
+                        // weak fallback models (Groq 8B after 70B rate-
+                        // limits) compressing 47-word inputs into 5-word
+                        // replies. Plus a framing-text + person-shift
+                        // detector for the same fallback class, which
+                        // tends to wrap output in "I've cleaned the
+                        // input. Here is the output:" or refuse with
+                        // "I don't have the ability to…".
                         let rawWords = normalizedRawTranscript.split { $0.isWhitespace }.count
                         let cleanedWords = normalizedCleanedTranscript.split { $0.isWhitespace }.count
                         let wordRatio = Double(cleanedWords) / Double(max(1, rawWords))
                         let charRatio = Double(normalizedCleanedTranscript.count) / Double(max(1, normalizedRawTranscript.count))
                         let outputIsBulleted = Self.outputContainsBullets(normalizedCleanedTranscript)
 
-                        let tripped: Bool
+                        let expansionTripped: Bool
                         if outputIsBulleted {
-                            // Bulleted output is structural reformatting, not
-                            // runaway prose. Allow up to ~3× character
-                            // expansion (header + bullets + capitalisation
-                            // overhead) before treating it as suspicious.
-                            tripped = charRatio > 3.0
+                            expansionTripped = charRatio > 3.0
                         } else {
-                            tripped = wordRatio > 1.5 || charRatio > 2.0
+                            expansionTripped = wordRatio > 1.5 || charRatio > 2.0
                         }
 
-                        if tripped {
+                        // Compression guardrail. Triggered when raw is
+                        // long enough to be substantive (≥10 words) and
+                        // cleaned is under half its length — the failure
+                        // mode where a weak model drops content. Skip on
+                        // bulleted output (legitimate restructuring can
+                        // tighten word count modestly) and on very short
+                        // inputs (filler-only utterances legitimately
+                        // collapse to nothing).
+                        let compressionTripped = !outputIsBulleted
+                            && rawWords >= 10
+                            && wordRatio < 0.5
+
+                        // Framing / refusal detector. The 8B fallback in
+                        // particular tends to: (a) wrap its output in
+                        // "I've cleaned the input. Here is the output: …",
+                        // (b) refuse with "I don't have the ability to …",
+                        // (c) reply meta to the speaker ("It's asking you,
+                        // not me."). All produce output that does NOT
+                        // start with the speaker's words.
+                        let framingTripped = Self.outputLooksLikeFramingOrRefusal(normalizedCleanedTranscript)
+
+                        if expansionTripped || compressionTripped || framingTripped {
+                            let reason: String
+                            if framingTripped {
+                                reason = "framing/refusal pattern"
+                            } else if compressionTripped {
+                                reason = "compression (weak fallback model dropping content)"
+                            } else {
+                                reason = "expansion"
+                            }
                             logger.warning(
-                                "LLM cleanup expansion guardrail tripped (\(cleanedWords, privacy: .public)w / \(rawWords, privacy: .public)w, charRatio \(String(format: "%.2f", charRatio), privacy: .public), bulleted=\(outputIsBulleted ? "true" : "false", privacy: .public)) — using raw transcript instead"
+                                "LLM cleanup guardrail tripped — \(reason, privacy: .public) (\(cleanedWords, privacy: .public)w / \(rawWords, privacy: .public)w, charRatio \(String(format: "%.2f", charRatio), privacy: .public), bulleted=\(outputIsBulleted ? "true" : "false", privacy: .public)) — using raw transcript instead"
                             )
                             cleanedTranscript = normalizedRawTranscript
                         } else {
@@ -564,6 +590,46 @@ final class DictationPipeline: ObservableObject {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             return trimmed.hasPrefix("• ") || trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ")
         }
+    }
+
+    /// `true` if `output` looks like model meta-commentary or a refusal —
+    /// i.e. the model addressed the speaker instead of cleaning their
+    /// transcript. Tightly-scoped phrase match: only flag opens that
+    /// almost never appear at the start of a real dictated transcript.
+    /// The Groq llama-3.1-8b fallback is the dominant source after
+    /// Sir's Groq daily-token cap kicks in.
+    static func outputLooksLikeFramingOrRefusal(_ output: String) -> Bool {
+        let lowered = output
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard !lowered.isEmpty else { return false }
+
+        // Phrases that almost certainly indicate the model is talking
+        // ABOUT the cleanup rather than producing it. Each is a prefix
+        // match on the cleaned output's first few words.
+        let badPrefixes: [String] = [
+            "i've cleaned",
+            "i have cleaned",
+            "here is the output",
+            "here is the cleaned",
+            "here's the cleaned",
+            "here's the output",
+            "the cleaned text",
+            "the cleaned output",
+            "i don't have the ability",
+            "i cannot ",
+            "i can't ",
+            "i'm not able",
+            "i am not able",
+            "as an ai",
+            "as a language model",
+            "i apologize",
+            "i'm sorry",
+            "sorry, i ",
+            "it's asking you, not me",
+            "it is asking you, not me",
+        ]
+        return badPrefixes.contains(where: { lowered.hasPrefix($0) })
     }
 
     /// Deterministically reformat `text` as a bulleted list, parsing a

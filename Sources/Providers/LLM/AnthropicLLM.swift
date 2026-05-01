@@ -12,7 +12,11 @@ struct AnthropicLLM: LLMProvider {
     init(
         apiKey: String,
         httpClient: ProviderHTTPClient,
-        model: String = "claude-sonnet-4-20250514",
+        // Haiku 4.5 is plenty for transcript cleanup — fast, cheap, and
+        // the prompt-caching path below makes the per-request cost
+        // negligible. Sonnet would be overkill for this task and 5–10×
+        // the price. Users can override per-provider if they want.
+        model: String = "claude-haiku-4-5-20251001",
         timeoutSeconds: TimeInterval = 20
     ) {
         self.apiKey = apiKey
@@ -30,10 +34,29 @@ struct AnthropicLLM: LLMProvider {
             throw LLMError.apiError(provider: .anthropic, message: "Invalid endpoint URL.", statusCode: nil)
         }
 
+        // Wrap the system prompt in a single content block with
+        // `cache_control: { type: "ephemeral" }`. Anthropic's prompt
+        // caching gives a 5-minute server-side cache and a 90% discount
+        // on cached tokens. Comet's cleanup prompt is ~1,400 tokens of
+        // mostly-static rules + examples, sent on every dictation —
+        // ideal for caching. First request in a 5-min window pays full
+        // price + a small write surcharge; everything after is cheap and
+        // ~30–50% faster (cache hit avoids re-tokenising the system
+        // block).
+        //
+        // The minimum cacheable size for the cheaper `claude-haiku`
+        // family is 1,024 tokens; cleanup prompt clears that. For
+        // shorter prompts the cache_control hint is silently ignored.
         let payload: [String: Any] = [
             "model": model,
             "max_tokens": request.maxTokens,
-            "system": request.systemPrompt,
+            "system": [
+                [
+                    "type": "text",
+                    "text": request.systemPrompt,
+                    "cache_control": ["type": "ephemeral"],
+                ],
+            ],
             "messages": [
                 ["role": "user", "content": request.userMessage],
             ],

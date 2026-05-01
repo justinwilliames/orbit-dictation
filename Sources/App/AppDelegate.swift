@@ -21,6 +21,18 @@ extension Notification.Name {
 /// directly; SwiftUI scenes read it via `appDelegate.appState`.
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Singleton handle for non-SwiftUI access. `@NSApplicationDelegateAdaptor`
+    /// is supposed to make `NSApp.delegate as? AppDelegate` work, but on
+    /// macOS Sequoia the cast returns nil at runtime — confirmed via Sir's
+    /// diagnostic logs in v0.2.14: AppDelegate's methods run fine (proving
+    /// it's wired in) but `NSApp.delegate as? AppDelegate` returns nil from
+    /// callsites like `MenuBarView`. SwiftUI appears to wrap the user
+    /// AppDelegate in a private adaptor class for `NSApp.delegate`, defeating
+    /// the cast. This static handle bypasses the wrapper — we set it in
+    /// `init()` (always runs on the main thread when SwiftUI instantiates
+    /// the adaptor) and consumers read it directly.
+    nonisolated(unsafe) static var shared: AppDelegate?
+
     /// Created eagerly so `appState` is available the moment SwiftUI
     /// starts evaluating its scene tree. AppDelegate is `@MainActor` and
     /// `@NSApplicationDelegateAdaptor` instantiates it on the main thread,
@@ -37,6 +49,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var aboutWC: AboutWindowController?
 
     private static let lastLaunchedVersionKey = "lastLaunchedShortVersion"
+
+    override init() {
+        super.init()
+        AppDelegate.shared = self
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         didFinishLaunching = true
