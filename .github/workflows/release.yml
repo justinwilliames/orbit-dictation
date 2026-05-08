@@ -165,7 +165,7 @@ jobs:
           ls -la dist/
 
       - name: Upload .dmg as workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.dmg.outputs.dmg_name }}
           path: ${{ steps.dmg.outputs.dmg_path }}
